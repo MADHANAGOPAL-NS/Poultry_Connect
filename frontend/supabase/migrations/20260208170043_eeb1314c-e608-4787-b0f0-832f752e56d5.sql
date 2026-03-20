@@ -1,0 +1,14 @@
+-- Insert sample measurement data for dashboard display
+INSERT INTO public.measurements (sensor_type, value, unit, recorded_at) VALUES
+  ('temperature', 24.5, '°C', now() - interval '1 minute'),
+  ('temperature', 24.2, '°C', now() - interval '10 minutes'),
+  ('temperature', 23.8, '°C', now() - interval '30 minutes'),
+  ('humidity', 62, '%', now() - interval '2 minutes'),
+  ('humidity', 65, '%', now() - interval '15 minutes'),
+  ('humidity', 68, '%', now() - interval '45 minutes'),
+  ('air_quality', 85, '', now() - interval '3 minutes'),
+  ('air_quality', 82, '', now() - interval '20 minutes'),
+  ('air_quality', 78, '', now() - interval '1 hour'),
+  ('sound_level', 38, 'dB', now() - interval '1 minute'),
+  ('sound_level', 42, 'dB', now() - interval '25 minutes'),
+  ('sound_level', 45, 'dB', now() - interval '50 minutes');
