@@ -15,7 +15,7 @@ const Index = () => {
       <Header />
       <HeroSection />
       <MonitoringSystem />
-      <HealthPredictor />
+      <HealthPredictor hideHistory={true} />
       <PredictionCriteria />
       <Marketplace />
       <PricingSection />

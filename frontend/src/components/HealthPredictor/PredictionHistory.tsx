@@ -6,19 +6,19 @@ import { History, AlertTriangle, CheckCircle, XCircle, Loader2 } from 'lucide-re
 import { format } from 'date-fns';
 
 interface PredictionRecord {
-  id: string;
+  _id: string;
   temperature: number;
   humidity: number;
   ammonia: number;
   co2: number;
   sound: number;
   movement: number;
-  stress_level: string;
-  health_status: string;
+  stressLevel: string;
+  healthStatus: string;
   confidence: number;
   analysis: string | null;
   recommendations: string[] | null;
-  created_at: string;
+  createdAt: string;
 }
 
 const getStatusColor = (status: string) => {
@@ -118,21 +118,21 @@ const PredictionHistory = () => {
             <div className="space-y-3">
               {history.map((record) => (
                 <div
-                  key={record.id}
+                  key={record._id}
                   className="p-4 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-muted-foreground">
-                      {format(new Date(record.created_at), 'MMM d, yyyy h:mm a')}
+                      {format(new Date(record.createdAt), 'MMM d, yyyy h:mm a')}
                     </span>
                     <div className="flex gap-2">
-                      <Badge className={`text-xs ${getStatusColor(record.health_status)}`}>
-                        {getStatusIcon(record.health_status)}
-                        <span className="ml-1 capitalize">{record.health_status}</span>
+                      <Badge className={`text-xs ${getStatusColor(record.healthStatus)}`}>
+                        {getStatusIcon(record.healthStatus)}
+                        <span className="ml-1 capitalize">{record.healthStatus}</span>
                       </Badge>
-                      <Badge className={`text-xs ${getStatusColor(record.stress_level)}`}>
-                        {getStatusIcon(record.stress_level)}
-                        <span className="ml-1 capitalize">{record.stress_level}</span>
+                      <Badge className={`text-xs ${getStatusColor(record.stressLevel)}`}>
+                        {getStatusIcon(record.stressLevel)}
+                        <span className="ml-1 capitalize">{record.stressLevel}</span>
                       </Badge>
                     </div>
                   </div>

@@ -8,7 +8,7 @@ import PredictionForm from './PredictionForm';
 import PredictionResults from './PredictionResults';
 import PredictionHistory from './PredictionHistory';
 
-const HealthPredictor = () => {
+const HealthPredictor = ({ hideHistory = false }: { hideHistory?: boolean }) => {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -167,10 +167,11 @@ const HealthPredictor = () => {
           <PredictionResults prediction={prediction} isLoading={isLoading} />
         </div>
 
-        {/* History section below */}
-        <div className="mt-8">
-          <PredictionHistory />
-        </div>
+        {!hideHistory && (
+          <div className="mt-8">
+            <PredictionHistory />
+          </div>
+        )}
       </div>
     </section>
   );

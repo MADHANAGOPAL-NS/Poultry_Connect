@@ -5,6 +5,10 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true }, // will store hashed password
   isVerified: { type: Boolean, default: false },
   verificationToken: { type: String },
+  user_metadata: {
+    full_name: { type: String, default: '' },
+    avatar_url: { type: String, default: '' }
+  }
 }, { timestamps: true });
 
 export default mongoose.model('User', userSchema);

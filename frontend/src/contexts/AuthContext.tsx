@@ -16,7 +16,8 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   signIn: (token: string, userData: User) => void;
-  signOut: () => Promise<void>;
+  signOut: (options?: { silent?: boolean }) => Promise<void>;
+  updateUser: (data: Partial<User>) => void;
   loading: boolean;
   subscribed: boolean;
   subscriptionEnd: string | null;
@@ -84,16 +85,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  const signOut = async () => {
+  const signOut = async (options?: { silent?: boolean }) => {
     setLoading(true);
     localStorage.removeItem('auth_token');
     setSession(null);
     setUser(null);
     setLoading(false);
-    toast({
-      title: "Signed out",
-      description: "You have been signed out successfully.",
-    });
+    
+    if (!options?.silent) {
+      toast({
+        title: "Signed out",
+        description: "You have been signed out successfully.",
+      });
+    }
+  };
+
+  const updateUser = (data: Partial<User>) => {
+    setUser(prev => prev ? { ...prev, ...data } : null);
   };
 
   const value = {
@@ -101,6 +109,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     session,
     signIn,
     signOut,
+    updateUser,
     loading,
     subscribed,
     subscriptionEnd,

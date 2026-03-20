@@ -6,6 +6,7 @@ import User from '../models/User.js';
 import UserRole from '../models/UserRole.js';
 import BuyerProfile from '../models/BuyerProfile.js';
 import SellerProfile from '../models/SellerProfile.js';
+import PredictionHistory from '../models/PredictionHistory.js';
 import sendVerificationEmail from '../utils/sendEmail.js';
 
 const router = express.Router();
@@ -63,7 +64,7 @@ router.post('/register', async (req, res) => {
     const payload = { userId: user._id };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
     
-    res.json({ token, user: { id: user._id, email: user.email, isVerified: user.isVerified } });
+    res.json({ token, user: { id: user._id, email: user.email, isVerified: user.isVerified, user_metadata: user.user_metadata } });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
@@ -91,7 +92,7 @@ router.post('/login', async (req, res) => {
     const payload = { userId: user._id };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
     
-    res.json({ token, user: { id: user._id, email: user.email } });
+    res.json({ token, user: { id: user._id, email: user.email, user_metadata: user.user_metadata } });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
@@ -130,6 +131,90 @@ router.post('/verify-email', async (req, res) => {
     res.json({ message: 'Email verified successfully!' });
   } catch (err) {
     res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// Delete Account Route
+router.delete('/delete', async (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ message: 'No auth token provided' });
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.userId;
+
+    // Delete user
+    await User.findByIdAndDelete(userId);
+    
+    // Delete associated data
+    await UserRole.findOneAndDelete({ userId });
+    await BuyerProfile.findOneAndDelete({ userId });
+    await SellerProfile.findOneAndDelete({ userId });
+    await PredictionHistory.deleteMany({ userId });
+    
+    res.json({ message: 'Account and associated data deleted successfully' });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: 'Server error during deletion' });
+  }
+});
+
+// Update Profile Route
+router.put('/profile', async (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ message: 'No auth token provided' });
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.userId;
+
+    const { full_name, avatar_url } = req.body;
+    
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    if (!user.user_metadata) {
+      user.user_metadata = { full_name: '', avatar_url: '' };
+    }
+    
+    if (full_name !== undefined) user.user_metadata.full_name = full_name;
+    if (avatar_url !== undefined) user.user_metadata.avatar_url = avatar_url;
+    
+    await user.save();
+    
+    res.json({ message: 'Profile updated successfully', user_metadata: user.user_metadata });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: 'Server error during profile update' });
+  }
+});
+
+// Update Password Route
+router.put('/password', async (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ message: 'No auth token provided' });
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.userId;
+
+    const { password } = req.body;
+    
+    if (!password) return res.status(400).json({ message: 'Password is required' });
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    
+    user.password = hashedPassword;
+    await user.save();
+    
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: 'Server error during password update' });
   }
 });
 

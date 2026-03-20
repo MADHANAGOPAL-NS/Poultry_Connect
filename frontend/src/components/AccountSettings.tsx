@@ -5,31 +5,89 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Upload, UserX } from 'lucide-react';
+import { Loader2, Upload, UserX, Eye, EyeOff } from 'lucide-react';
+import Cropper from 'react-easy-crop';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 const AccountSettings = () => {
-    const { user, signOut } = useAuth();
+    const { user, signOut, updateUser } = useAuth();
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
 
-    // Form states
+    // Form & Upload states
     const [fullName, setFullName] = useState(user?.user_metadata?.full_name || '');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [localAvatar, setLocalAvatar] = useState<string | null>(null);
+
+    // Crop states
+    const [cropModalOpen, setCropModalOpen] = useState(false);
+    const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+    const [crop, setCrop] = useState({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+
+    const getCroppedImg = (imageSrc: string, pixelCrop: any): Promise<string> => {
+        return new Promise((resolve) => {
+            const image = new Image();
+            image.src = imageSrc;
+            image.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = pixelCrop.width;
+                canvas.height = pixelCrop.height;
+                const ctx = canvas.getContext('2d');
+
+                ctx?.drawImage(
+                    image,
+                    pixelCrop.x,
+                    pixelCrop.y,
+                    pixelCrop.width,
+                    pixelCrop.height,
+                    0,
+                    0,
+                    pixelCrop.width,
+                    pixelCrop.height
+                );
+
+                resolve(canvas.toDataURL('image/jpeg'));
+            };
+        });
+    };
 
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         try {
-            // Mock API update
-            setTimeout(() => {
-                toast({
-                    title: 'Profile Updated',
-                    description: 'Your name has been updated locally.',
-                });
-                setLoading(false);
-            }, 500);
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/profile`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ full_name: fullName })
+            });
+
+            if (!res.ok) throw new Error('Failed to update profile');
+
+            updateUser({
+                ...user,
+                user_metadata: { ...user?.user_metadata, full_name: fullName }
+            });
+
+            toast({
+                title: 'Profile Updated',
+                description: 'Your name has been updated successfully.',
+            });
         } catch (err: unknown) {
+            toast({
+                title: 'Update failed',
+                description: 'Could not update your profile.',
+                variant: 'destructive',
+            });
+        } finally {
             setLoading(false);
         }
     };
@@ -47,16 +105,31 @@ const AccountSettings = () => {
 
         setLoading(true);
         try {
-            setTimeout(() => {
-                toast({
-                    title: 'Password Mock',
-                    description: 'Custom password updating would happen here.',
-                });
-                setPassword('');
-                setConfirmPassword('');
-                setLoading(false);
-            }, 500);
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/password`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ password })
+            });
+
+            if (!res.ok) throw new Error('Failed to update password');
+
+            toast({
+                title: 'Password Updated',
+                description: 'Your password has been securely changed.',
+            });
+            setPassword('');
+            setConfirmPassword('');
         } catch (err: unknown) {
+            toast({
+                title: 'Update failed',
+                description: 'Could not update your password.',
+                variant: 'destructive',
+            });
+        } finally {
             setLoading(false);
         }
     };
@@ -75,18 +148,56 @@ const AccountSettings = () => {
         }
 
         const reader = new FileReader();
-        reader.onloadend = async () => {
-            const base64String = reader.result;
-            setLoading(true);
-            setTimeout(() => {
-                toast({
-                    title: 'Avatar Mocked',
-                    description: 'Avatar update mock successful.',
-                });
-                setLoading(false);
-            }, 500);
+        reader.onloadend = () => {
+            setImageToCrop(reader.result as string);
+            setCropModalOpen(true);
         };
         reader.readAsDataURL(file);
+
+        // Reset input so same file can trigger change again
+        e.target.value = '';
+    };
+
+    const handleSaveCrop = async () => {
+        if (!imageToCrop || !croppedAreaPixels) return;
+
+        setLoading(true);
+        const croppedImageBase64 = await getCroppedImg(imageToCrop, croppedAreaPixels);
+
+        try {
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/profile`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ avatar_url: croppedImageBase64 })
+            });
+
+            if (!res.ok) throw new Error('Failed to update avatar');
+
+            updateUser({
+                ...user,
+                user_metadata: { ...user?.user_metadata, avatar_url: croppedImageBase64 }
+            });
+
+            toast({
+                title: 'Avatar Updated',
+                description: 'Your newly cropped profile picture has been saved.',
+            });
+            setLocalAvatar(croppedImageBase64);
+            setCropModalOpen(false);
+            setImageToCrop(null);
+        } catch (error) {
+            toast({
+                title: 'Update failed',
+                description: 'Failed to update avatar. Please try again.',
+                variant: 'destructive',
+            });
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleDeleteAccount = async () => {
@@ -94,14 +205,35 @@ const AccountSettings = () => {
             return;
         }
         setLoading(true);
-        setTimeout(() => {
-            toast({
-                title: 'Account Deleted Mock',
-                description: 'Your account has been deleted locally.',
+        try {
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/delete`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
             });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.message || 'Failed to delete account');
+            }
+
+            toast({
+                title: 'Account Deleted',
+                description: 'Your account and all associated data have been permanently removed.',
+            });
+
+            await signOut({ silent: true }); // Clear state quietly to prevent overwriting the deleted alert
+        } catch (error: any) {
+            toast({
+                title: 'Deletion Failed',
+                description: error.message || 'An unexpected error occurred.',
+                variant: 'destructive',
+            });
+        } finally {
             setLoading(false);
-            signOut();
-        }, 800);
+        }
     };
 
     return (
@@ -117,9 +249,9 @@ const AccountSettings = () => {
                     </CardHeader>
                     <CardContent className="flex flex-col items-center">
                         <div className="h-32 w-32 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center mb-6">
-                            {user?.user_metadata?.avatar_url ? (
+                            {localAvatar || user?.user_metadata?.avatar_url ? (
                                 <img
-                                    src={user.user_metadata.avatar_url}
+                                    src={localAvatar || user?.user_metadata?.avatar_url}
                                     alt="Profile"
                                     className="h-full w-full object-cover"
                                 />
@@ -179,25 +311,47 @@ const AccountSettings = () => {
                     <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
                         <div className="space-y-2">
                             <Label htmlFor="newPassword">New Password</Label>
-                            <Input
-                                id="newPassword"
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                minLength={6}
-                                required
-                            />
+                            <div className="relative">
+                                <Input
+                                    id="newPassword"
+                                    type={showPassword ? "text" : "password"}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    minLength={6}
+                                    required
+                                    className="pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                    tabIndex={-1}
+                                >
+                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                            <Input
-                                id="confirmPassword"
-                                type="password"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                minLength={6}
-                                required
-                            />
+                            <div className="relative">
+                                <Input
+                                    id="confirmPassword"
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    minLength={6}
+                                    required
+                                    className="pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                    tabIndex={-1}
+                                >
+                                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                            </div>
                         </div>
                         <Button type="submit" disabled={loading} className="max-w-xs mt-2 bg-gray-900 border hover:bg-gray-800 text-white">
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -228,6 +382,52 @@ const AccountSettings = () => {
                     </Button>
                 </CardContent>
             </Card>
+
+            {/* Crop Dialog */}
+            <Dialog open={cropModalOpen} onOpenChange={setCropModalOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Crop Profile Picture</DialogTitle>
+                    </DialogHeader>
+                    <div className="relative h-[300px] w-full bg-gray-900 overflow-hidden rounded-md border">
+                        {imageToCrop && (
+                            <Cropper
+                                image={imageToCrop}
+                                crop={crop}
+                                zoom={zoom}
+                                aspect={1}
+                                cropShape="round"
+                                showGrid={false}
+                                onCropChange={setCrop}
+                                onCropComplete={(_, croppedPixels) => setCroppedAreaPixels(croppedPixels)}
+                                onZoomChange={setZoom}
+                            />
+                        )}
+                    </div>
+
+                    <DialogFooter className="mt-4 flex sm:justify-between items-center w-full">
+                        <input
+                            type="range"
+                            value={zoom}
+                            min={1}
+                            max={3}
+                            step={0.1}
+                            aria-labelledby="Zoom"
+                            onChange={(e) => setZoom(Number(e.target.value))}
+                            className="w-1/2 accent-green-600"
+                        />
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={() => setCropModalOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button onClick={handleSaveCrop} className="bg-green-600 hover:bg-green-700" disabled={loading}>
+                                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Save Crop
+                            </Button>
+                        </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

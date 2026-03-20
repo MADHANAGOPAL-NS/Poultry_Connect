@@ -18,12 +18,8 @@ const Header = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           <div className="flex items-center">
-            <Link to="/">
-              <img
-                src="/lovable-uploads/fb536fca-43f9-4b55-b779-0502499b7ab3.png"
-                alt="Poultry Connect Logo"
-                className="h-16 w-auto"
-              />
+            <Link to="/" className="flex items-center">
+              <span className="text-2xl font-bold tracking-tight text-green-700">Poultry Connect</span>
             </Link>
           </div>
 

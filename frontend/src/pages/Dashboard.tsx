@@ -34,28 +34,10 @@ const Dashboard = () => {
   return (
     <DashboardLayout activeTab={activeTab} setActiveTab={setActiveTab}>
       {activeTab === 'dashboard' && <DashboardContent />}
-      {activeTab === 'predictor' && <HealthPredictor />}
+      {activeTab === 'predictor' && <HealthPredictor hideHistory />}
       {activeTab === 'history' && (
         <div className="max-w-4xl mx-auto space-y-6">
           <PredictionHistory />
-        </div>
-      )}
-      {activeTab === 'profile' && (
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <h2 className="text-xl font-bold mb-4">Your Profile</h2>
-          <p className="text-gray-500">Manage your profile details.</p>
-        </div>
-      )}
-      {activeTab === 'results' && (
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <h2 className="text-xl font-bold mb-4">Results</h2>
-          <p className="text-gray-500">Detailed prediction results and analytics.</p>
-        </div>
-      )}
-      {activeTab === 'alerts' && (
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <h2 className="text-xl font-bold mb-4">Exceptions & Alerts</h2>
-          <p className="text-gray-500">Critical alerts that require immediately attention.</p>
         </div>
       )}
       {activeTab === 'account' && <AccountSettings />}
